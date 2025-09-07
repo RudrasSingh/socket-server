@@ -43,29 +43,42 @@ async def websocket_endpoint(websocket: WebSocket):
                 data = await websocket.receive_json()
                 
                 # Check if location data is present (latitude and longitude)
-                lat = data.get("latitude")
-                lon = data.get("longitude")
+                lat_raw = data.get("latitude")
+                lon_raw = data.get("longitude")
                 
-                if lat is not None and lon is not None:
-                    print(f"📍 Received location: {lat}, {lon}")
+                if lat_raw is not None and lon_raw is not None:
+                    try:
+                        # Convert to float (handles both string and number inputs)
+                        lat = float(lat_raw)
+                        lon = float(lon_raw)
+                        
+                        print(f"📍 Received location: {lat}, {lon}")
 
-                    # Prepare response
-                    response = {
-                        "type": "location_ack",
-                        "status": "ok", 
-                        "lat": lat, 
-                        "lon": lon
-                    }
+                        # Prepare response
+                        response = {
+                            "type": "location_ack",
+                            "status": "ok", 
+                            "lat": lat, 
+                            "lon": lon
+                        }
 
-                    # Restricted area check
-                    if is_in_restricted_area(lat, lon):
-                        response["restricted"] = True
-                        response["message"] = "⚠️ Entered restricted area!"
-                    else:
-                        response["restricted"] = False
-                        response["message"] = "✅ Location received"
+                        # Restricted area check
+                        if is_in_restricted_area(lat, lon):
+                            response["restricted"] = True
+                            response["message"] = "⚠️ Entered restricted area!"
+                        else:
+                            response["restricted"] = False
+                            response["message"] = "✅ Location received"
 
-                    await websocket.send_json(response)
+                        await websocket.send_json(response)
+                    except (ValueError, TypeError):
+                        # Invalid latitude/longitude values
+                        print("⚠️ Invalid latitude/longitude values")
+                        response = {
+                            "type": "error",
+                            "message": "Location not received!"
+                        }
+                        await websocket.send_json(response)
                 else:
                     # No location data found
                     response = {
