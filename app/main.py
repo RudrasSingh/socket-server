@@ -32,27 +32,44 @@ def is_in_restricted_area(lat: float, lon: float) -> bool:
 @app.websocket("/ws/location")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
+    print("🔗 Client connected")
+    
     try:
+        # Wait for messages and maintain connection
         while True:
-            # 📩 Receive GPS
             data = await websocket.receive_json()
-            lat = data.get("latitude")
-            lon = data.get("longitude")
+            
+            # Only respond to location messages
+            if data.get("type") == "location":
+                lat = data.get("latitude")
+                lon = data.get("longitude")
 
-            print(f"📍 Received location: {lat}, {lon}")
+                print(f"📍 Received location: {lat}, {lon}")
 
-            # Always send ack
-            response = {"status": "ok", "lat": lat, "lon": lon}
+                # Prepare response
+                response = {
+                    "type": "location_ack",
+                    "status": "ok", 
+                    "lat": lat, 
+                    "lon": lon
+                }
 
-            # Restricted check (separate logic)
-            if is_in_restricted_area(lat, lon):
-                response["restricted"] = True
-                response["message"] = "⚠️ Entered restricted area!"
+                # Restricted area check
+                if is_in_restricted_area(lat, lon):
+                    response["restricted"] = True
+                    response["message"] = "⚠️ Entered restricted area!"
+                else:
+                    response["restricted"] = False
+                    response["message"] = "✅ Location received"
+
+                await websocket.send_json(response)
             else:
-                response["restricted"] = False
-                response["message"] = "✅ Location received"
-
-            await websocket.send_json(response)
+                # For all other message types, respond with location not received
+                response = {
+                    "type": "error",
+                    "message": "Location not received!"
+                }
+                await websocket.send_json(response)
 
     except WebSocketDisconnect:
         print("❌ Client disconnected")

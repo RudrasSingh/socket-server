@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <div id="output"></div>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        function addMessage(message) {
+            output.innerHTML += message + '<br>';
+        }
+        
+        let ws = new WebSocket("wss://socket-server-sjon.onrender.com/ws/location");
+
+        ws.onopen = () => {
+            addMessage("✅ Connected");
+            ws.send(JSON.stringify({ latitude: 28.613, longitude: 77.229 }));
+        };
+
+        ws.onmessage = (event) => addMessage("📩 Server: " + event.data);
+        ws.onerror = (err) => addMessage("❌ Error: " + err);
+        ws.onclose = () => addMessage("🔌 Disconnected");
+    </script>
+</body>
+
+</html>
