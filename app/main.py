@@ -1,6 +1,7 @@
 # server.py
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import math
+import json
 
 app = FastAPI()
 
@@ -37,34 +38,53 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         # Wait for messages and maintain connection
         while True:
-            data = await websocket.receive_json()
-            
-            # Only respond to location messages
-            if data.get("type") == "location":
-                lat = data.get("latitude")
-                lon = data.get("longitude")
+            try:
+                # Try to receive and parse JSON
+                data = await websocket.receive_json()
+                
+                # Only respond to location messages
+                if data.get("type") == "location":
+                    lat = data.get("latitude")
+                    lon = data.get("longitude")
 
-                print(f"📍 Received location: {lat}, {lon}")
+                    print(f"📍 Received location: {lat}, {lon}")
 
-                # Prepare response
-                response = {
-                    "type": "location_ack",
-                    "status": "ok", 
-                    "lat": lat, 
-                    "lon": lon
-                }
+                    # Prepare response
+                    response = {
+                        "type": "location_ack",
+                        "status": "ok", 
+                        "lat": lat, 
+                        "lon": lon
+                    }
 
-                # Restricted area check
-                if is_in_restricted_area(lat, lon):
-                    response["restricted"] = True
-                    response["message"] = "⚠️ Entered restricted area!"
+                    # Restricted area check
+                    if is_in_restricted_area(lat, lon):
+                        response["restricted"] = True
+                        response["message"] = "⚠️ Entered restricted area!"
+                    else:
+                        response["restricted"] = False
+                        response["message"] = "✅ Location received"
+
+                    await websocket.send_json(response)
                 else:
-                    response["restricted"] = False
-                    response["message"] = "✅ Location received"
-
+                    # For all other message types, respond with location not received
+                    response = {
+                        "type": "error",
+                        "message": "Location not received!"
+                    }
+                    await websocket.send_json(response)
+                    
+            except json.JSONDecodeError:
+                # Handle invalid JSON
+                print("⚠️ Invalid JSON received")
+                response = {
+                    "type": "error",
+                    "message": "Location not received!"
+                }
                 await websocket.send_json(response)
-            else:
-                # For all other message types, respond with location not received
+            except Exception as e:
+                # Handle other parsing errors
+                print(f"⚠️ Error parsing message: {e}")
                 response = {
                     "type": "error",
                     "message": "Location not received!"
