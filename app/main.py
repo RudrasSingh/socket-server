@@ -13,7 +13,7 @@ app = FastAPI()
 # -------------------------
 # 🔒 Restricted Area Logic
 # -------------------------
-RESTRICTED_CENTER = (28.6129, 77.2295)  # India Gate, Delhi
+RESTRICTED_CENTER = (22.881658, 88.398118)  # Kolkata sector 5
 RESTRICTED_RADIUS_KM = 1.0
 
 
