@@ -2,6 +2,11 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import math
 import json
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -33,7 +38,7 @@ def is_in_restricted_area(lat: float, lon: float) -> bool:
 @app.websocket("/ws/location")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    print("🔗 Client connected")
+    logger.info("🔗 Client connected")
     
     try:
         # Wait for messages and maintain connection
@@ -52,7 +57,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         lat = float(lat_raw)
                         lon = float(lon_raw)
                         
-                        print(f"📍 Received location: {lat}, {lon}")
+                        logger.info(f"📍 Received location: {lat}, {lon}")
 
                         # Prepare response
                         response = {
@@ -73,7 +78,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         await websocket.send_json(response)
                     except (ValueError, TypeError):
                         # Invalid latitude/longitude values
-                        print("⚠️ Invalid latitude/longitude values")
+                        logger.warning("⚠️ Invalid latitude/longitude values")
                         response = {
                             "type": "error",
                             "message": "Location not received!"
@@ -81,6 +86,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         await websocket.send_json(response)
                 else:
                     # No location data found
+                    logger.warning("⚠️ No location data found in message")
                     response = {
                         "type": "error",
                         "message": "Location not received!"
@@ -89,11 +95,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     
             except WebSocketDisconnect:
                 # Client disconnected, break out of the loop
-                print("❌ Client disconnected")
+                logger.info("❌ Client disconnected")
                 break
             except json.JSONDecodeError:
                 # Handle invalid JSON
-                print("⚠️ Invalid JSON received")
+                logger.warning("⚠️ Invalid JSON received")
                 try:
                     response = {
                         "type": "error",
@@ -105,7 +111,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     break
             except Exception as e:
                 # Handle other parsing errors
-                print(f"⚠️ Error parsing message: {e}")
+                logger.error(f"⚠️ Error parsing message: {e}")
                 try:
                     response = {
                         "type": "error",
@@ -117,4 +123,4 @@ async def websocket_endpoint(websocket: WebSocket):
                     break
 
     except WebSocketDisconnect:
-        print("❌ Client disconnected")
+        logger.info("❌ Client disconnected")
