@@ -42,11 +42,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Try to receive and parse JSON
                 data = await websocket.receive_json()
                 
-                # Only respond to location messages
-                if data.get("type") == "location":
-                    lat = data.get("latitude")
-                    lon = data.get("longitude")
-
+                # Check if location data is present (latitude and longitude)
+                lat = data.get("latitude")
+                lon = data.get("longitude")
+                
+                if lat is not None and lon is not None:
                     print(f"📍 Received location: {lat}, {lon}")
 
                     # Prepare response
@@ -67,29 +67,41 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     await websocket.send_json(response)
                 else:
-                    # For all other message types, respond with location not received
+                    # No location data found
                     response = {
                         "type": "error",
                         "message": "Location not received!"
                     }
                     await websocket.send_json(response)
                     
+            except WebSocketDisconnect:
+                # Client disconnected, break out of the loop
+                print("❌ Client disconnected")
+                break
             except json.JSONDecodeError:
                 # Handle invalid JSON
                 print("⚠️ Invalid JSON received")
-                response = {
-                    "type": "error",
-                    "message": "Location not received!"
-                }
-                await websocket.send_json(response)
+                try:
+                    response = {
+                        "type": "error",
+                        "message": "Location not received!"
+                    }
+                    await websocket.send_json(response)
+                except:
+                    # If we can't send, connection is probably closed
+                    break
             except Exception as e:
                 # Handle other parsing errors
                 print(f"⚠️ Error parsing message: {e}")
-                response = {
-                    "type": "error",
-                    "message": "Location not received!"
-                }
-                await websocket.send_json(response)
+                try:
+                    response = {
+                        "type": "error",
+                        "message": "Location not received!"
+                    }
+                    await websocket.send_json(response)
+                except:
+                    # If we can't send, connection is probably closed
+                    break
 
     except WebSocketDisconnect:
         print("❌ Client disconnected")
